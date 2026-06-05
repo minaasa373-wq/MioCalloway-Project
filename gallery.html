@@ -9,12 +9,16 @@
   <meta property="og:description" content="昼と夜、表と裏。13枚の写真。">
   <meta property="og:image" content="assets/images/og_image.jpg">
   <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#1E1E3F">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <a href="#main" class="skip-link">本文へスキップ</a>
 
   <!-- ======= HEADER ======= -->
   <header class="site-header">
@@ -23,21 +27,21 @@
       <ul class="site-nav">
         <li><a href="index.html">Music</a></li>
         <li><a href="goods.html">Goods</a></li>
-        <li><a href="gallery.html" class="active">Gallery</a></li>
+        <li><a href="gallery.html" class="active" aria-current="page">Gallery</a></li>
         <li><a href="about.html">About</a></li>
       </ul>
     </nav>
   </header>
 
   <!-- ======= MAIN ======= -->
-  <main class="page-main">
+  <main id="main" class="page-main">
 
     <!-- Hours 時代（昼・暖）-->
     <section class="gallery-hours" aria-labelledby="gallery-hours-heading">
       <div class="section-container">
 
         <div class="gallery-section-heading fade-in fade-in-1">
-          <span class="page-label" id="gallery-hours-heading">Hours</span>
+          <h1 class="page-label" id="gallery-hours-heading">Gallery — Hours</h1>
           <span class="gallery-section-heading-desc">昼の光、表の顔。朝から夕方まで。</span>
         </div>
 
@@ -148,7 +152,7 @@
       <div class="section-container">
 
         <div class="gallery-section-heading fade-in fade-in-1">
-          <span class="page-label" id="gallery-sideb-heading">Side B</span>
+          <h2 class="page-label" id="gallery-sideb-heading">Side B</h2>
           <span class="gallery-section-heading-desc" style="font-style:italic;color:rgba(138,132,153,.7);">夜のわたし。知らなかった側の光。</span>
         </div>
 
