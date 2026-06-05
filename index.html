@@ -9,19 +9,23 @@
   <meta property="og:description" content="窓際のカフェ、午後の光、ちょっと遠い国の空気。そういうものに似た音楽をつくっています。">
   <meta property="og:image" content="assets/images/og_image.jpg">
   <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#1E1E3F">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="has-player">
+
+  <a href="#main" class="skip-link">本文へスキップ</a>
 
   <!-- ======= HEADER ======= -->
   <header class="site-header">
     <a href="index.html" class="site-logo">MIO CALLOWAY</a>
     <nav aria-label="サイトナビゲーション">
       <ul class="site-nav">
-        <li><a href="index.html" class="active">Music</a></li>
+        <li><a href="index.html" class="active" aria-current="page">Music</a></li>
         <li><a href="goods.html">Goods</a></li>
         <li><a href="gallery.html">Gallery</a></li>
         <li><a href="about.html">About</a></li>
@@ -30,17 +34,22 @@
   </header>
 
   <!-- ======= MAIN ======= -->
-  <main class="page-main" style="padding-bottom: 70px;">
+  <main id="main" class="page-main">
 
     <!-- HERO -->
     <section class="hero" aria-labelledby="hero-title">
       <h1 id="hero-title" class="hero-title fade-in fade-in-1">MIO CALLOWAY</h1>
       <p class="hero-tagline fade-in fade-in-2">born of afternoon light &amp; borrowed languages</p>
       <p class="hero-bio fade-in fade-in-3">
-        窓際のカフェ、午後の光、ちょっと遠い国の空気。<br>
-        <span style="white-space: nowrap">そういうものに似た音楽をつくっています。</span>
+        <span>窓際のカフェ、午後の光、</span>
+        <span>ちょっと遠い国の空気。</span>
+        <span>そういうものに似た音楽をつくっています。</span>
       </p>
-      <span class="scroll-hint fade-in fade-in-4" aria-hidden="true">↓</span>
+      <div class="hero-cta fade-in fade-in-4">
+        <a href="#hours-heading" class="hero-cta-secondary">楽曲を聴く</a>
+        <a href="https://www.instagram.com/mio.calloway" class="hero-cta-primary" target="_blank" rel="noopener noreferrer">Instagram をフォロー</a>
+      </div>
+      <span class="scroll-hint fade-in fade-in-5" aria-hidden="true">↓</span>
     </section>
 
     <!-- ======= HOURS ======= -->
@@ -76,8 +85,7 @@
                 <div class="track-info">
                   <span class="track-title track-title-en">Sunday</span>
                   <div class="track-sub">
-                    <span class="track-time-of-day">朝</span>
-                    <span class="track-bpm">F major / 84 bpm</span>
+                    <span class="track-duration">1分31秒</span>
                   </div>
                 </div>
                 <button class="play-btn" aria-label="Sundayを再生" type="button"></button>
@@ -92,8 +100,7 @@
                 <div class="track-info">
                   <span class="track-title">ぽこあぽこ</span>
                   <div class="track-sub">
-                    <span class="track-time-of-day">昼下がり</span>
-                    <span class="track-bpm">76 bpm</span>
+                    <span class="track-duration">58秒</span>
                   </div>
                 </div>
                 <button class="play-btn" aria-label="ぽこあぽこを再生" type="button"></button>
@@ -108,8 +115,7 @@
                 <div class="track-info">
                   <span class="track-title track-title-en">Five PM</span>
                   <div class="track-sub">
-                    <span class="track-time-of-day">夕方</span>
-                    <span class="track-bpm">G major / 72 bpm</span>
+                    <span class="track-duration">1分54秒</span>
                   </div>
                 </div>
                 <button class="play-btn" aria-label="Five PMを再生" type="button"></button>
@@ -124,8 +130,7 @@
                 <div class="track-info">
                   <span class="track-title">窓辺の月</span>
                   <div class="track-sub">
-                    <span class="track-time-of-day">夜</span>
-                    <span class="track-bpm">A minor / 62 bpm</span>
+                    <span class="track-duration">1分31秒</span>
                   </div>
                 </div>
                 <button class="play-btn" aria-label="窓辺の月を再生" type="button"></button>
@@ -159,7 +164,7 @@
 
           <!-- Track -->
           <div class="side-b-track-block">
-            <span class="page-label" id="sideb-heading">Side B</span>
+            <h2 class="page-label" id="sideb-heading">Side B</h2>
             <ul>
               <li class="side-b-track-item"
                   data-src="assets/audio/05_side_b.mp3"
@@ -167,7 +172,7 @@
                   data-sideb="true">
                 <div>
                   <span class="side-b-track-title">Side B</span>
-                  <span class="side-b-track-meta">D minor / 約70 bpm / 約2:40</span>
+                  <span class="side-b-track-meta">2分49秒</span>
                 </div>
                 <button class="play-btn" aria-label="Side Bを再生" type="button"></button>
               </li>

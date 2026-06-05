@@ -2,8 +2,9 @@
    Mio Calloway — Global Styles
    ============================================================ */
 
-/* === 1. GOOGLE FONTS === */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Klee+One:wght@400;600&display=swap');
+/* === 1. GOOGLE FONTS ===
+   Fonts are loaded via <link> in each page's <head> (preconnect + display=swap).
+   No @import here to avoid duplicate, render-blocking font requests. */
 
 /* === 2. CSS VARIABLES === */
 :root {
@@ -24,7 +25,8 @@
   /* 汎用 */
   --ink:           #1E1E3F;
   --ink-on-dark:   #F4ECDD;
-  --muted:         #8A8499;
+  /* 暗背景上での可読性確保（旧 #8A8499 はコントラスト不足だったため明度を上げた） */
+  --muted:         #ABA5BC;
   --line:          rgba(244,236,221,.14);
   --line-dark:     rgba(30,30,63,.12);
 
@@ -33,7 +35,6 @@
   --f-cormorant:   'Cormorant Garamond', serif;
   --f-shippori:    'Shippori Mincho', serif;
   --f-zen:         'Zen Kaku Gothic New', sans-serif;
-  --f-klee:        'Klee One', cursive;
 }
 
 /* === 3. RESET & BASE === */
@@ -43,8 +44,8 @@
   padding: 0;
 }
 
-html {
-  scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 body {
@@ -82,6 +83,52 @@ ul, ol {
 
 button {
   cursor: pointer;
+}
+
+/* === ACCESSIBILITY: focus visibility === */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.player-progress:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+}
+
+/* Skip link — visible only when focused */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 1000;
+  padding: 0.5rem 0.9rem;
+  background: var(--amber);
+  color: var(--indigo);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 1rem;
+  color: var(--indigo);
+}
+
+/* === ACCESSIBILITY: reduced motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .fade-in { opacity: 1 !important; transform: none !important; }
 }
 
 /* === 4. FADE-IN ANIMATIONS === */
@@ -142,7 +189,9 @@ button {
 .site-nav::-webkit-scrollbar { display: none; }
 
 .site-nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0.35rem 0.75rem;
   font-family: var(--f-zen);
   font-size: 0.78rem;
@@ -207,10 +256,6 @@ button {
   padding: 4.5rem 1.5rem;
 }
 
-.section-container.narrow {
-  max-width: 640px;
-}
-
 .page-label {
   display: block;
   font-family: var(--f-cinzel);
@@ -219,12 +264,6 @@ button {
   color: var(--amber);
   text-transform: uppercase;
   margin-bottom: 1.25rem;
-}
-
-.section-rule {
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 0;
 }
 
 /* === 8. HERO (index.html) === */
@@ -263,8 +302,57 @@ button {
   font-size: 0.95rem;
   color: var(--muted);
   line-height: 2.1;
-  max-width: 28ch;
+  max-width: 100%;
   margin: 0 auto;
+  /* 文節の途中で改行させない（「ちょ／っと」のような割れを防ぐ） */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.hero-bio span {
+  display: block;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.25rem;
+}
+
+.hero-cta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.55rem 1.4rem;
+  font-family: var(--f-zen);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.hero-cta-primary {
+  background: var(--amber);
+  color: var(--indigo);
+}
+
+.hero-cta-primary:hover {
+  background: var(--cream);
+  color: var(--indigo);
+}
+
+.hero-cta-secondary {
+  border: 1px solid var(--line);
+  color: var(--cream);
+}
+
+.hero-cta-secondary:hover {
+  border-color: var(--amber);
+  color: var(--amber);
 }
 
 .scroll-hint {
@@ -389,24 +477,10 @@ button {
   margin-top: 0.15rem;
 }
 
-.track-time-of-day {
-  font-size: 0.68rem;
+.track-duration {
+  font-size: 0.72rem;
   color: var(--muted);
-}
-
-.track-bpm {
-  font-size: 0.62rem;
-  color: rgba(138, 132, 153, 0.6);
-  display: none;
-}
-
-.track-note {
-  grid-column: 2 / -1;
-  font-size: 0.68rem;
-  color: rgba(138, 132, 153, 0.7);
-  font-style: italic;
-  padding-top: 0.15rem;
-  font-family: var(--f-klee);
+  font-variant-numeric: tabular-nums;
 }
 
 .play-btn {
@@ -527,6 +601,11 @@ button {
 }
 
 /* === 12. MUSIC PLAYER BAR === */
+/* Pages with the fixed player bar pad the body so the footer is never hidden behind it */
+body.has-player {
+  padding-bottom: 60px;
+}
+
 .player-bar {
   position: fixed;
   bottom: 0;
@@ -710,12 +789,6 @@ button {
   margin-bottom: 0.5rem;
 }
 
-.goods-card-featured-note {
-  font-size: 0.72rem;
-  color: rgba(138,132,153,.7);
-  font-style: italic;
-}
-
 .goods-card {
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -760,6 +833,24 @@ button {
   font-style: italic;
 }
 
+.goods-restock {
+  margin-top: 2.75rem;
+  padding-top: 2.25rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.goods-restock .hero-cta {
+  margin-top: 1.25rem;
+}
+
+.goods-restock-text {
+  font-family: var(--f-shippori);
+  font-size: 0.85rem;
+  color: var(--cream-dim);
+  line-height: 1.9;
+}
+
 .sold-out-badge {
   position: absolute;
   top: 0.85rem;
@@ -775,17 +866,6 @@ button {
   text-transform: uppercase;
 }
 
-.goods-intro {
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-align: center;
-  margin-bottom: 3rem;
-  font-style: italic;
-  font-family: var(--f-cormorant);
-  font-size: 1rem;
-  letter-spacing: 0.05em;
-}
-
 /* === 14. GALLERY PAGE === */
 .gallery-hours {
   background: var(--indigo-soft);
@@ -797,16 +877,6 @@ button {
 
 .gallery-section-heading {
   margin-bottom: 2.25rem;
-}
-
-.gallery-section-heading-en {
-  display: block;
-  font-family: var(--f-cinzel);
-  font-size: 0.72rem;
-  letter-spacing: 0.22em;
-  color: var(--amber);
-  text-transform: uppercase;
-  margin-bottom: 0.4rem;
 }
 
 .gallery-section-heading-desc {
@@ -1026,14 +1096,6 @@ button {
 
   .hero-title {
     letter-spacing: 0.22em;
-  }
-
-  .track-bpm {
-    display: block;
-  }
-
-  .track-item {
-    grid-template-columns: 2rem 1fr auto auto;
   }
 
   .player-track-name {
