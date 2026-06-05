@@ -731,9 +731,10 @@ button {
 .goods-card-img {
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  object-fit: contain;
   background: linear-gradient(145deg, var(--indigo-soft) 0%, var(--indigo) 100%);
   display: block;
+  padding: 0.75rem;
 }
 
 .goods-card-body {
