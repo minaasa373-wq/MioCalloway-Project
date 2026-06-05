@@ -302,8 +302,15 @@ input:focus-visible,
   font-size: 0.95rem;
   color: var(--muted);
   line-height: 2.1;
-  max-width: 28ch;
+  max-width: 100%;
   margin: 0 auto;
+  /* 文節の途中で改行させない（「ちょ／っと」のような割れを防ぐ） */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.hero-bio span {
+  display: block;
 }
 
 .hero-cta {
@@ -470,15 +477,10 @@ input:focus-visible,
   margin-top: 0.15rem;
 }
 
-.track-time-of-day {
-  font-size: 0.68rem;
-  color: var(--muted);
-}
-
-.track-bpm {
+.track-duration {
   font-size: 0.72rem;
   color: var(--muted);
-  display: none;
+  font-variant-numeric: tabular-nums;
 }
 
 .play-btn {
@@ -1094,14 +1096,6 @@ body.has-player {
 
   .hero-title {
     letter-spacing: 0.22em;
-  }
-
-  .track-bpm {
-    display: block;
-  }
-
-  .track-item {
-    grid-template-columns: 2rem 1fr auto auto;
   }
 
   .player-track-name {
