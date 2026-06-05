@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music — Mio Calloway</title>
+  <meta name="description" content="Mio Calloway の公式サイト。ミニアルバム『Hours』と隠しトラック Side B を収録。">
+  <meta property="og:title" content="Mio Calloway">
+  <meta property="og:description" content="窓際のカフェ、午後の光、ちょっと遠い国の空気。そういうものに似た音楽をつくっています。">
+  <meta property="og:image" content="assets/images/og_image.jpg">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Shippori+Mincho:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ======= HEADER ======= -->
+  <header class="site-header">
+    <a href="index.html" class="site-logo">MIO CALLOWAY</a>
+    <nav aria-label="サイトナビゲーション">
+      <ul class="site-nav">
+        <li><a href="index.html" class="active">Music</a></li>
+        <li><a href="goods.html">Goods</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ======= MAIN ======= -->
+  <main class="page-main" style="padding-bottom: 70px;">
+
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title" class="hero-title fade-in fade-in-1">MIO CALLOWAY</h1>
+      <p class="hero-tagline fade-in fade-in-2">born of afternoon light &amp; borrowed languages</p>
+      <p class="hero-bio fade-in fade-in-3">
+        窓際のカフェ、午後の光、<br>ちょっと遠い国の空気。<br>
+        そういうものに似た音楽をつくっています。
+      </p>
+      <span class="scroll-hint fade-in fade-in-4" aria-hidden="true">↓</span>
+    </section>
+
+    <!-- ======= HOURS ======= -->
+    <section class="hours-section" aria-labelledby="hours-heading">
+      <div class="section-container">
+        <span class="page-label fade-in fade-in-1">Mini Album</span>
+        <h2 id="hours-heading" style="font-family:var(--f-cinzel);font-size:clamp(1.5rem,5vw,2.5rem);font-weight:600;letter-spacing:.18em;color:var(--cream);margin-bottom:1.5rem;" class="fade-in fade-in-2">Hours</h2>
+        <p class="section-lead fade-in fade-in-3">朝、昼、夕方、夜。一日の光を、4つの音にして。</p>
+
+        <div class="hours-inner fade-in fade-in-4">
+          <!-- Album cover -->
+          <div class="album-cover-wrapper">
+            <img
+              src="assets/images/cover_hours.jpg"
+              alt="ミニアルバム『Hours』ジャケット"
+              class="album-cover"
+              width="260"
+              height="260"
+            >
+            <p class="album-cover-label">Hours</p>
+          </div>
+
+          <!-- Track list -->
+          <div class="hours-tracks">
+            <ul class="track-list" aria-label="トラックリスト">
+
+              <!-- Track 1: Sunday -->
+              <li class="track-item"
+                  data-src="assets/audio/01_sunday.mp3"
+                  data-title="Sunday"
+                  data-sideb="false">
+                <span class="track-num">1</span>
+                <div class="track-info">
+                  <span class="track-title track-title-en">Sunday</span>
+                  <div class="track-sub">
+                    <span class="track-time-of-day">朝</span>
+                    <span class="track-bpm">F major / 84 bpm</span>
+                  </div>
+                </div>
+                <button class="play-btn" aria-label="Sundayを再生" type="button"></button>
+              </li>
+
+              <!-- Track 2: ぽこあぽこ -->
+              <li class="track-item"
+                  data-src="assets/audio/02_pocoapoco.mp3"
+                  data-title="ぽこあぽこ"
+                  data-sideb="false">
+                <span class="track-num">2</span>
+                <div class="track-info">
+                  <span class="track-title">ぽこあぽこ</span>
+                  <div class="track-sub">
+                    <span class="track-time-of-day">昼下がり</span>
+                    <span class="track-bpm">76 bpm</span>
+                  </div>
+                </div>
+                <button class="play-btn" aria-label="ぽこあぽこを再生" type="button"></button>
+                <span class="track-note">架空のアプリ「ぽこあぽこ」のために書いた曲</span>
+              </li>
+
+              <!-- Track 3: Five PM -->
+              <li class="track-item"
+                  data-src="assets/audio/03_five_pm.mp3"
+                  data-title="Five PM"
+                  data-sideb="false">
+                <span class="track-num">3</span>
+                <div class="track-info">
+                  <span class="track-title track-title-en">Five PM</span>
+                  <div class="track-sub">
+                    <span class="track-time-of-day">夕方</span>
+                    <span class="track-bpm">G major / 72 bpm</span>
+                  </div>
+                </div>
+                <button class="play-btn" aria-label="Five PMを再生" type="button"></button>
+              </li>
+
+              <!-- Track 4: 窓辺の月 -->
+              <li class="track-item"
+                  data-src="assets/audio/04_madobe_no_tsuki.mp3"
+                  data-title="窓辺の月"
+                  data-sideb="false">
+                <span class="track-num">4</span>
+                <div class="track-info">
+                  <span class="track-title">窓辺の月</span>
+                  <div class="track-sub">
+                    <span class="track-time-of-day">夜</span>
+                    <span class="track-bpm">A minor / 62 bpm</span>
+                  </div>
+                </div>
+                <button class="play-btn" aria-label="窓辺の月を再生" type="button"></button>
+              </li>
+
+            </ul>
+          </div><!-- /.hours-tracks -->
+        </div><!-- /.hours-inner -->
+      </div>
+    </section><!-- /.hours-section -->
+
+    <!-- ======= SIDE B ======= -->
+    <section class="side-b-section" aria-labelledby="sideb-heading">
+      <div class="section-container">
+        <div class="side-b-lead fade-in fade-in-1">
+          <span class="side-b-lead-en">the hours fold away</span>
+          <span class="side-b-lead-ja">昼のわたしが、知らない夜のこと。</span>
+        </div>
+
+        <div class="side-b-inner fade-in fade-in-2">
+          <!-- Cover -->
+          <div class="side-b-cover-wrapper">
+            <img
+              src="assets/images/cover_side_b.jpg"
+              alt="写真集『Side B』表紙"
+              class="side-b-cover"
+              width="200"
+              height="200"
+            >
+          </div>
+
+          <!-- Track -->
+          <div class="side-b-track-block">
+            <span class="page-label" id="sideb-heading">Side B</span>
+            <ul>
+              <li class="side-b-track-item"
+                  data-src="assets/audio/05_side_b.mp3"
+                  data-title="Side B"
+                  data-sideb="true">
+                <div>
+                  <span class="side-b-track-title">Side B</span>
+                  <span class="side-b-track-meta">D minor / 約70 bpm / 約2:40</span>
+                </div>
+                <button class="play-btn" aria-label="Side Bを再生" type="button"></button>
+              </li>
+            </ul>
+
+            <p class="side-b-hint">
+              "the hours fold away" — Hours への、見えない折り返し。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section><!-- /.side-b-section -->
+
+  </main>
+
+  <!-- ======= FOOTER ======= -->
+  <footer class="site-footer">
+    <span class="footer-logo">MIO CALLOWAY ｜ Bossa nova</span>
+    <p class="footer-ig">Instagram: <a href="https://www.instagram.com/mio.calloway" target="_blank" rel="noopener noreferrer">@mio.calloway</a></p>
+    <div class="footer-disclosure">
+      <p>これは創作プロジェクトです。Mio Calloway は架空のアーティストであり、<br>実在の人物・団体とは関係ありません。</p>
+      <p style="margin-top:.5rem;">© 2026</p>
+    </div>
+  </footer>
+
+  <!-- ======= PLAYER BAR ======= -->
+  <div id="player-bar" class="player-bar" role="region" aria-label="音楽プレーヤー">
+    <span id="player-idle" class="player-idle">曲を選んで再生</span>
+    <span id="player-track-name" class="player-track-name"></span>
+    <div class="player-controls">
+      <button id="player-play-btn" class="player-play-btn" type="button" aria-label="再生">
+        <svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="0,0 10,6 0,12"/></svg>
+      </button>
+    </div>
+    <div class="player-seek">
+      <input
+        id="player-progress"
+        class="player-progress"
+        type="range"
+        min="0"
+        max="100"
+        value="0"
+        step="0.1"
+        aria-label="再生位置"
+      >
+      <span id="player-time" class="player-time">0:00 / 0:00</span>
+    </div>
+  </div>
+
+  <script src="js/player.js"></script>
+</body>
+</html>
