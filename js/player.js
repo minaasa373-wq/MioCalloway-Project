@@ -12,6 +12,8 @@
   const barPlayBtn   = document.getElementById('player-play-btn');
   const barProgress  = document.getElementById('player-progress');
   const barTime      = document.getElementById('player-time');
+  const barVolume    = document.getElementById('player-volume');
+  const barMuteBtn   = document.getElementById('player-mute-btn');
 
   const SVG_PLAY  = '<svg viewBox="0 0 10 12" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>';
   const SVG_PAUSE = '<svg viewBox="0 0 10 12" fill="currentColor"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>';
@@ -110,6 +112,64 @@
     }
     setProgressStyle(Number(barProgress.value));
   });
+
+  /* ---- Volume control ---- */
+  var SVG_VOL = '<svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14" aria-hidden="true">' +
+    '<path d="M0 5v6h3l4 3V2L3 5H0z"/>' +
+    '<path d="M10 4.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
+    '<path d="M11.5 2.5a7 7 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
+    '</svg>';
+  var SVG_MUTE = '<svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14" aria-hidden="true">' +
+    '<path d="M0 5v6h3l4 3V2L3 5H0z"/>' +
+    '<path d="M10 5l4 6M14 5l-4 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
+    '</svg>';
+
+  var lastVolume = 1;
+
+  function setVolumeStyle(pct) {
+    if (barVolume) barVolume.style.setProperty('--pct', pct + '%');
+  }
+
+  function updateMuteUI() {
+    var muted = audio.muted || audio.volume === 0;
+    if (barMuteBtn) {
+      barMuteBtn.innerHTML = muted ? SVG_MUTE : SVG_VOL;
+      barMuteBtn.classList.toggle('muted', muted);
+      barMuteBtn.setAttribute('aria-label', muted ? 'ミュート解除' : 'ミュート');
+    }
+  }
+
+  if (barVolume) {
+    audio.volume = Number(barVolume.value) / 100;
+    setVolumeStyle(Number(barVolume.value));
+
+    barVolume.addEventListener('input', function () {
+      var v = Number(barVolume.value) / 100;
+      audio.volume = v;
+      audio.muted = false;
+      if (v > 0) lastVolume = v;
+      setVolumeStyle(Number(barVolume.value));
+      updateMuteUI();
+    });
+  }
+
+  if (barMuteBtn) {
+    barMuteBtn.addEventListener('click', function () {
+      if (audio.muted || audio.volume === 0) {
+        audio.muted = false;
+        audio.volume = lastVolume || 1;
+      } else {
+        lastVolume = audio.volume;
+        audio.muted = true;
+      }
+      var shown = audio.muted ? 0 : Math.round(audio.volume * 100);
+      if (barVolume) barVolume.value = shown;
+      setVolumeStyle(shown);
+      updateMuteUI();
+    });
+  }
+
+  updateMuteUI();
 
   /* ---- Audio events ---- */
   audio.addEventListener('play', function () {
