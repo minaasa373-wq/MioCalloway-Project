@@ -57,6 +57,10 @@
     audio.src = src;
     audio.load();
 
+    /* 最初の再生でプレーヤーを表示する */
+    bar.classList.add('visible');
+    document.body.classList.add('player-active');
+
     barIdle.style.display = 'none';
     barName.style.display  = 'block';
     barName.textContent    = title;
