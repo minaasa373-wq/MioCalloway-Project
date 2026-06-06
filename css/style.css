@@ -601,8 +601,8 @@ input:focus-visible,
 }
 
 /* === 12. MUSIC PLAYER BAR === */
-/* Pages with the fixed player bar pad the body so the footer is never hidden behind it */
-body.has-player {
+/* 曲の再生ボタンが押されるまでプレーヤーは隠す。表示後はフッターが隠れないよう余白を確保 */
+body.player-active {
   padding-bottom: 60px;
 }
 
@@ -619,7 +619,12 @@ body.has-player {
   padding: 0 1.25rem;
   background: var(--indigo-soft);
   border-top: 1px solid var(--line);
-  transition: background 0.5s ease;
+  transform: translateY(100%);
+  transition: transform 0.35s ease, background 0.5s ease;
+}
+
+.player-bar.visible {
+  transform: translateY(0);
 }
 
 .player-bar.side-b-mode {
