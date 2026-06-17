@@ -36,7 +36,7 @@
   }
 
   function highlightTrack(el) {
-    document.querySelectorAll('.track-item.playing').forEach(function (t) {
+    document.querySelectorAll('[data-src].playing').forEach(function (t) {
       t.classList.remove('playing');
       var btn = t.querySelector('.play-btn');
       if (btn) btn.innerHTML = SVG_PLAY;
@@ -84,7 +84,7 @@
     btn.setAttribute('aria-label', '再生');
 
     btn.addEventListener('click', function () {
-      var trackEl = btn.closest('.track-item, .side-b-track-item');
+      var trackEl = btn.closest('.track-item, .side-b-track-item, .tsukiiro-card');
       if (!trackEl) return;
 
       if (currentTrackEl === trackEl) {
