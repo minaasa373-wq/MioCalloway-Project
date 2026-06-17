@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アルパカプリンス (Phase 2)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0018;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<script>
+// ================================================================
+//  アルパカプリンス  Phase 2 実装
+//  Phase 1 (移動 / ショット / 敵 / 当たり判定 / スコア / HP / ポーズ)
+//  に加えて Phase 2 として以下を追加:
+//   ・グレイズシステム (グレイズ判定 + カウント + パワーゲージ)
+//   ・ボム (Xキー / 敵弾消去 + 敵ダメージ + 一時無敵, 初期2発)
+//   ・アイテムドロップ (P / 金の星 / 紫クリスタル / 羊ボム / ハート)
+//   ・ショットパワーアップ (3段階: 弾数・太さ強化)
+//   ・HUD 拡張 (パワー / ボム / グレイズゲージ)
+// ================================================================
+
+// ----------------------------------------------------------------
+//  定数
+// ----------------------------------------------------------------
+const GRAZE_RADIUS   = 30;   // グレイズ判定半径 (自機中心から)
+const PICKUP_RADIUS  = 40;   // アイテム回収半径
+const MAX_SHOT_LEVEL = 3;    // ショット最大レベル
+const GRAZE_PER_GAUGE = 12;  // パワーゲージ満タンに必要なグレイズ回数
+
+// アイテム種別ごとの設定
+const ITEM_DEFS = {
+  power:   { tex: 'item_power',   score: 0,   label: 'POWER UP!',  color: '#ff66ff' },
+  star:    { tex: 'item_star',    score: 500, label: '+500',       color: '#ffdd33' },
+  crystal: { tex: 'item_crystal', score: 200, label: '+200',       color: '#cc77ff' },
+  bomb:    { tex: 'item_bomb',    score: 0,   label: 'BOMB +1',    color: '#ffffff' },
+  heart:   { tex: 'item_heart',   score: 0,   label: 'HP +1',      color: '#ff5577' },
+};
+
+// ----------------------------------------------------------------
+//  GameScene
+// ----------------------------------------------------------------
+class GameScene extends Phaser.Scene {
+  constructor() { super({ key: 'GameScene' }); }
+
+  // init() は scene.restart() のたびに呼ばれるのでここで変数リセット
+  init() {
+    this.score       = 0;
+    this.playerHP    = 8;
+    this.playerMaxHP = 8;
+    this.invincible      = false;
+    this.invincibleTimer = 0;
+    this.fireTimer       = 0;
+    this.enemySpawnTimer = 2;
+    this.gameOver = false;
+    this.paused   = false;
+
+    // ---- Phase 2 ステート ----
+    this.shotLevel   = 1;   // 1..MAX_SHOT_LEVEL
+    this.bombs       = 2;   // 初期ボム所持数
+    this.grazeCount  = 0;
+    this.grazeGauge  = 0;   // 0..GRAZE_PER_GAUGE
+    this.bombActive  = false;
+  }
+
+  create() {
+    this.createTextures();
+    this.createBackground();
+
+    // ---- Physics groups ----
+    this.playerBullets = this.physics.add.group();
+    this.enemies       = this.physics.add.group();
+    this.enemyBullets  = this.physics.add.group();
+    this.items         = this.physics.add.group();
+
+    // ---- Player ----
+    this.player = this.physics.add.sprite(150, 360, 'player');
+    this.player.setCollideWorldBounds(true);
+    // 中央 12×12 の小さいヒットボックス
+    this.player.body.setSize(12, 12);
+    this.player.body.setOffset(
+      (this.player.width  - 12) / 2,
+      (this.player.height - 12) / 2
+    );
+    this.player.setDepth(6);
+
+    // グレイズ判定の可視化リング (自機に追従)
+    this.grazeRing = this.add.circle(this.player.x, this.player.y, GRAZE_RADIUS)
+      .setStrokeStyle(1, 0x66ddff, 0.25)
+      .setDepth(5);
+
+    // ---- キーボード ----
+    this.cursors  = this.input.keyboard.createCursorKeys();
+    this.keyW     = this.input.keyboard.addKey('W');
+    this.keyA     = this.input.keyboard.addKey('A');
+    this.keyS     = this.input.keyboard.addKey('S');
+    this.keyD     = this.input.keyboard.addKey('D');
+    this.keyZ     = this.input.keyboard.addKey('Z');
+    this.keySpace = this.input.keyboard.addKey('SPACE');
+    this.keyX     = this.input.keyboard.addKey('X');   // ボム
+    this.keyEsc   = this.input.keyboard.addKey('ESC');
+
+    // ポーズ
+    this.keyEsc.on('down', () => {
+      if (this.gameOver) return;
+      this.paused = !this.paused;
+      this.pauseOverlay.setVisible(this.paused);
+      if (this.paused) this.physics.pause(); else this.physics.resume();
+    });
+
+    // ボム (押した瞬間に発動)
+    this.keyX.on('down', () => {
+      if (this.gameOver || this.paused) return;
+      this.useBomb();
+    });
+
+    // ---- Overlap ----
+    this.physics.add.overlap(
+      this.playerBullets, this.enemies,
+      this.onBulletHitEnemy, null, this
+    );
+    this.physics.add.overlap(
+      this.enemyBullets, this.player,
+      this.onEnemyBulletHitPlayer, null, this
+    );
+
+    // ---- HUD ----
+    this.createHUD();
+
+    // ---- Pause overlay ----
+    this.pauseOverlay = this.add.container(0, 0).setDepth(30).setVisible(false);
+    this.pauseOverlay.add(
+      this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.45)
+    );
+    this.pauseOverlay.add(
+      this.add.text(640, 360, 'PAUSE', {
+        fontSize: '72px', color: '#ffffff',
+        stroke: '#000000', strokeThickness: 8
+      }).setOrigin(0.5)
+    );
+    this.pauseOverlay.add(
+      this.add.text(640, 440, 'ESC キーで再開', {
+        fontSize: '22px', color: '#aaaaff',
+        stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5)
+    );
+  }
+
+  // ----------------------------------------------------------------
+  //  テクスチャ生成 (すべてプロシージャル)
+  // ----------------------------------------------------------------
+  createTextures() {
+    let g;
+
+    // ---- 自機 (48×48) ---- 紫ロケット風
+    g = this.add.graphics();
+    // スラスター炎
+    g.fillStyle(0xff8800, 0.7);
+    g.fillEllipse(6, 24, 14, 10);
+    // 主翼 上
+    g.fillStyle(0x7722cc);
+    g.fillTriangle(14, 22, 6, 4, 30, 20);
+    // 主翼 下
+    g.fillTriangle(14, 26, 6, 44, 30, 28);
+    // 胴体
+    g.fillStyle(0x9933ff);
+    g.fillEllipse(26, 24, 36, 18);
+    // ノーズ
+    g.fillStyle(0xcc66ff);
+    g.fillTriangle(46, 24, 30, 15, 30, 33);
+    // コックピット
+    g.fillStyle(0xaaddff, 0.9);
+    g.fillEllipse(30, 24, 12, 8);
+    // ヒットボックス表示 (白い点)
+    g.fillStyle(0xffffff, 0.85);
+    g.fillCircle(24, 24, 3);
+    g.generateTexture('player', 48, 48);
+    g.destroy();
+
+    // ---- 自機弾 (24×6) ---- 紫レーザー
+    g = this.add.graphics();
+    g.fillStyle(0xdd44ff);
+    g.fillRect(0, 1, 18, 4);
+    g.fillStyle(0xffffff);
+    g.fillRect(14, 2, 10, 2);
+    g.generateTexture('playerBullet', 24, 6);
+    g.destroy();
+
+    // ---- タレット敵 (44×40) ---- オレンジ砲台箱
+    g = this.add.graphics();
+    // 箱本体
+    g.fillStyle(0xff6600);
+    g.fillRect(8, 4, 32, 32);
+    // 枠線
+    g.lineStyle(2, 0xbb3300);
+    g.strokeRect(8, 4, 32, 32);
+    // リベット
+    g.fillStyle(0xdd4400);
+    [
+      [10, 6], [30, 6],
+      [10, 26], [30, 26]
+    ].forEach(([rx, ry]) => g.fillRect(rx, ry, 6, 6));
+    // 砲身 (左向き)
+    g.fillStyle(0x882200);
+    g.fillRect(0, 17, 20, 6);
+    g.fillRect(0, 15, 5, 10);
+    // センサー / 目
+    g.fillStyle(0xff0000, 0.4);
+    g.fillCircle(22, 20, 8);
+    g.fillStyle(0xff0000);
+    g.fillCircle(22, 20, 5);
+    g.fillStyle(0xffcc00);
+    g.fillCircle(22, 20, 2);
+    g.generateTexture('turret', 44, 40);
+    g.destroy();
+
+    // ---- 敵弾 (12×12) ---- 赤オレンジ弾
+    g = this.add.graphics();
+    g.fillStyle(0xff2200, 0.85);
+    g.fillCircle(6, 6, 6);
+    g.fillStyle(0xff9900);
+    g.fillCircle(6, 6, 3);
+    g.generateTexture('enemyBullet', 12, 12);
+    g.destroy();
+
+    // ---- 星 (3×3) ----
+    g = this.add.graphics();
+    g.fillStyle(0xffffff);
+    g.fillRect(0, 0, 3, 3);
+    g.generateTexture('star', 3, 3);
+    g.destroy();
+
+    // ---- 爆発 (48×48) ----
+    g = this.add.graphics();
+    g.fillStyle(0xff6600, 0.9);
+    g.fillCircle(24, 24, 24);
+    g.fillStyle(0xffcc00);
+    g.fillCircle(24, 24, 15);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(24, 24, 6);
+    g.generateTexture('explosion', 48, 48);
+    g.destroy();
+
+    // ============================================================
+    //  Phase 2 アイテムテクスチャ (各 28×28)
+    // ============================================================
+
+    // ---- P (パワーアップ) ---- ピンクの宝石に "P"
+    g = this.add.graphics();
+    g.fillStyle(0xff33cc, 0.95);
+    g.fillRoundedRect(3, 3, 22, 22, 5);
+    g.lineStyle(2, 0xffffff, 0.9);
+    g.strokeRoundedRect(3, 3, 22, 22, 5);
+    g.generateTexture('item_power', 28, 28);
+    g.destroy();
+    // "P" の文字を重ねるのは create 後に別途 (テクスチャには図形のみ)
+
+    // ---- 金の星 ---- ゴールドの五芒星
+    g = this.add.graphics();
+    g.fillStyle(0xffcc00, 1);
+    this.drawStarShape(g, 14, 14, 5, 13, 6);
+    g.fillStyle(0xffffaa, 0.8);
+    this.drawStarShape(g, 14, 13, 5, 7, 3);
+    g.generateTexture('item_star', 28, 28);
+    g.destroy();
+
+    // ---- 紫クリスタル ---- 菱形の結晶
+    g = this.add.graphics();
+    g.fillStyle(0xaa44ff, 0.95);
+    g.fillPoints([
+      { x: 14, y: 2 }, { x: 24, y: 14 },
+      { x: 14, y: 26 }, { x: 4, y: 14 }
+    ], true);
+    g.fillStyle(0xddaaff, 0.7);
+    g.fillPoints([
+      { x: 14, y: 2 }, { x: 19, y: 14 },
+      { x: 14, y: 26 }, { x: 14, y: 2 }
+    ], true);
+    g.lineStyle(1.5, 0xffffff, 0.6);
+    g.strokePoints([
+      { x: 14, y: 2 }, { x: 24, y: 14 },
+      { x: 14, y: 26 }, { x: 4, y: 14 }
+    ], true);
+    g.generateTexture('item_crystal', 28, 28);
+    g.destroy();
+
+    // ---- 羊シルエット (ボム) ---- 白い羊の影
+    g = this.add.graphics();
+    g.fillStyle(0x222244, 0.5);
+    g.fillCircle(14, 16, 12);
+    g.fillStyle(0xffffff, 0.95);
+    // 体 (もこもこ)
+    g.fillCircle(11, 16, 7);
+    g.fillCircle(17, 16, 7);
+    g.fillCircle(14, 12, 7);
+    // 顔
+    g.fillStyle(0x553322, 1);
+    g.fillCircle(21, 14, 4);
+    // 目
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(22, 13, 1.3);
+    g.generateTexture('item_bomb', 28, 28);
+    g.destroy();
+
+    // ---- ハート ---- 回復
+    g = this.add.graphics();
+    g.fillStyle(0xff3366, 1);
+    g.fillCircle(9, 10, 6);
+    g.fillCircle(19, 10, 6);
+    g.fillTriangle(3, 12, 25, 12, 14, 25);
+    g.fillStyle(0xff99aa, 0.7);
+    g.fillCircle(8, 9, 2.5);
+    g.generateTexture('item_heart', 28, 28);
+    g.destroy();
+
+    // ---- ボム発動リング (256×256) ----
+    g = this.add.graphics();
+    g.lineStyle(10, 0xffffff, 0.9);
+    g.strokeCircle(128, 128, 110);
+    g.lineStyle(20, 0xcc66ff, 0.5);
+    g.strokeCircle(128, 128, 90);
+    g.generateTexture('bombRing', 256, 256);
+    g.destroy();
+  }
+
+  // 星形を Graphics に描くヘルパー
+  drawStarShape(g, cx, cy, points, outer, inner) {
+    const pts = [];
+    for (let i = 0; i < points * 2; i++) {
+      const r = (i % 2 === 0) ? outer : inner;
+      const a = (Math.PI / points) * i - Math.PI / 2;
+      pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+    }
+    g.fillPoints(pts, true);
+  }
+
+  // ----------------------------------------------------------------
+  //  背景
+  // ----------------------------------------------------------------
+  createBackground() {
+    this.cameras.main.setBackgroundColor('#12082a');
+
+    // 星雲っぽい帯 (静的)
+    const nebula = this.add.graphics().setDepth(-2);
+    nebula.fillStyle(0x440088, 0.10);
+    nebula.fillRect(0, 80, 1280, 180);
+    nebula.fillStyle(0x220066, 0.07);
+    nebula.fillRect(0, 420, 1280, 220);
+
+    // スクロール星 (3層パラレックス)
+    this.starLayers = [];
+    [
+      { count: 70, speed: 18,  minScale: 1, maxScale: 1, alpha: 0.45 },
+      { count: 35, speed: 45,  minScale: 1, maxScale: 2, alpha: 0.75 },
+      { count: 12, speed: 90,  minScale: 2, maxScale: 3, alpha: 1.00 },
+    ].forEach(layer => {
+      for (let i = 0; i < layer.count; i++) {
+        const img = this.add.image(
+          Phaser.Math.Between(0, 1280),
+          Phaser.Math.Between(0, 720),
+          'star'
+        )
+          .setScale(Phaser.Math.Between(layer.minScale, layer.maxScale))
+          .setAlpha(layer.alpha)
+          .setDepth(-1);
+        this.starLayers.push({ img, speed: layer.speed });
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------
+  //  HUD
+  // ----------------------------------------------------------------
+  createHUD() {
+    const D = 10; // depth
+    const S = { stroke: '#000000', strokeThickness: 3 };
+
+    // HP ラベル
+    this.add.text(16, 14, 'HP', { fontSize: '16px', color: '#aaaaff', ...S }).setDepth(D);
+    // HP バー (Graphics で動的描画)
+    this.hpBar = this.add.graphics().setDepth(D);
+    this.drawHPBar();
+
+    // スコア
+    this.add.text(16, 52, 'SCORE', { fontSize: '13px', color: '#aaaaff', ...S }).setDepth(D);
+    this.scoreText = this.add.text(16, 66, '00000000', {
+      fontSize: '22px', color: '#ffffff', ...S
+    }).setDepth(D);
+
+    // ステージ名 (上中央)
+    this.add.text(640, 10, 'STAGE 1  ROYAL ALPACA SKYLINE', {
+      fontSize: '15px', color: '#ccbbff', ...S
+    }).setOrigin(0.5, 0).setDepth(D);
+
+    // ---- 左下: パワー (ショットレベル) ----
+    this.add.text(16, 640, 'POWER', { fontSize: '13px', color: '#aaaaff', ...S }).setDepth(D);
+    this.powerText = this.add.text(16, 656, '', {
+      fontSize: '20px', color: '#ff88ff', ...S
+    }).setDepth(D);
+
+    // ---- 中央下: ボム (羊アイコン数) ----
+    this.add.text(640, 636, 'BOMB', {
+      fontSize: '13px', color: '#aaaaff', ...S
+    }).setOrigin(0.5, 0).setDepth(D);
+    this.bombIcons = this.add.container(0, 0).setDepth(D);
+
+    // ---- 右下: グレイズ + ゲージ ----
+    this.add.text(1264, 636, 'GRAZE', {
+      fontSize: '13px', color: '#aaaaff', ...S
+    }).setOrigin(1, 0).setDepth(D);
+    this.grazeText = this.add.text(1264, 652, '0', {
+      fontSize: '22px', color: '#66ddff', ...S
+    }).setOrigin(1, 0).setDepth(D);
+    this.grazeGaugeBar = this.add.graphics().setDepth(D);
+
+    // 操作ヒント (下中央)
+    this.add.text(640, 718, '移動: 矢印/WASD  |  ショット: Z/SPACE  |  ボム: X  |  ポーズ: ESC', {
+      fontSize: '13px', color: '#7777aa', stroke: '#000000', strokeThickness: 2
+    }).setOrigin(0.5, 1).setDepth(D);
+
+    this.refreshHUD();
+  }
+
+  drawHPBar() {
+    this.hpBar.clear();
+    const ox = 40, oy = 14;
+    const w = 14, h = 16, gap = 3;
+    for (let i = 0; i < this.playerMaxHP; i++) {
+      const on = i < this.playerHP;
+      this.hpBar.fillStyle(on ? 0x9933ff : 0x2a1555);
+      this.hpBar.fillRect(ox + i * (w + gap), oy, w, h);
+      if (on) {
+        // 光沢ハイライト
+        this.hpBar.fillStyle(0xcc77ff, 0.5);
+        this.hpBar.fillRect(ox + i * (w + gap) + 2, oy + 2, w - 4, 4);
+      }
+    }
+  }
+
+  // パワー / ボム / グレイズゲージ をまとめて更新
+  refreshHUD() {
+    // パワー
+    this.powerText.setText('★'.repeat(this.shotLevel) + '☆'.repeat(MAX_SHOT_LEVEL - this.shotLevel));
+
+    // ボム (羊アイコンを所持数ぶん並べる)
+    this.bombIcons.removeAll(true);
+    const startX = 640 - (this.bombs - 1) * 17;
+    for (let i = 0; i < this.bombs; i++) {
+      this.bombIcons.add(
+        this.add.image(startX + i * 34, 672, 'item_bomb').setScale(0.95)
+      );
+    }
+
+    // グレイズ
+    this.grazeText.setText(String(this.grazeCount));
+
+    // グレイズ -> パワーゲージ
+    this.grazeGaugeBar.clear();
+    const gx = 1180, gy = 686, gw = 84, gh = 8;
+    this.grazeGaugeBar.fillStyle(0x223355, 1);
+    this.grazeGaugeBar.fillRect(gx, gy, gw, gh);
+    const ratio = this.grazeGauge / GRAZE_PER_GAUGE;
+    this.grazeGaugeBar.fillStyle(0x66ddff, 1);
+    this.grazeGaugeBar.fillRect(gx, gy, gw * ratio, gh);
+    this.grazeGaugeBar.lineStyle(1, 0x88eeff, 0.6);
+    this.grazeGaugeBar.strokeRect(gx, gy, gw, gh);
+  }
+
+  // ----------------------------------------------------------------
+  //  敵スポーン
+  // ----------------------------------------------------------------
+  spawnEnemy() {
+    const y       = Phaser.Math.Between(60, 600);
+    const targetX = Phaser.Math.Between(800, 1060);
+
+    const enemy = this.enemies.create(1380, y, 'turret');
+    enemy.setDepth(5);
+    enemy.hp        = 3;
+    enemy.targetX   = targetX;
+    enemy.arrived   = false;
+    enemy.fireTimer = Phaser.Math.FloatBetween(1.0, 2.5); // 到達後の最初の発射まで
+    enemy.setVelocityX(-200);
+    enemy.body.setAllowGravity(false);
+  }
+
+  // ----------------------------------------------------------------
+  //  update
+  // ----------------------------------------------------------------
+  update(_time, delta) {
+    if (this.gameOver || this.paused) return;
+
+    const dt = delta / 1000;
+
+    // 星スクロール
+    this.starLayers.forEach(s => {
+      s.img.x -= s.speed * dt;
+      if (s.img.x < -4) s.img.x = 1284;
+    });
+
+    // 自機
+    this.updatePlayer(dt);
+
+    // グレイズリングを自機に追従
+    this.grazeRing.setPosition(this.player.x, this.player.y);
+
+    // 無敵点滅
+    if (this.invincible) {
+      this.invincibleTimer -= dt;
+      this.player.setAlpha(Math.floor(this.invincibleTimer * 10) % 2 === 0 ? 1 : 0.2);
+      if (this.invincibleTimer <= 0) {
+        this.invincible = false;
+        this.player.setAlpha(1);
+      }
+    }
+
+    // 敵スポーン
+    this.enemySpawnTimer -= dt;
+    if (this.enemySpawnTimer <= 0) {
+      this.spawnEnemy();
+      this.enemySpawnTimer = Phaser.Math.FloatBetween(2.5, 5.0);
+    }
+
+    // 敵更新
+    [...this.enemies.getChildren()].forEach(enemy => {
+      if (!enemy.active) return;
+
+      // targetX まで移動したら低速ドリフトに切り替えて砲撃開始
+      if (!enemy.arrived && enemy.x <= enemy.targetX) {
+        enemy.setVelocityX(-30); // ゆっくり左へ流れる
+        enemy.arrived = true;
+      }
+
+      // 画面左端から出たら削除
+      if (enemy.x < -60) { enemy.destroy(); return; }
+
+      // 砲撃タイマー
+      if (enemy.arrived) {
+        enemy.fireTimer -= dt;
+        if (enemy.fireTimer <= 0) {
+          this.enemyFire(enemy);
+          enemy.fireTimer = 2.0;
+        }
+      }
+    });
+
+    // グレイズ判定
+    this.updateGraze();
+
+    // アイテム更新 (回収判定 + 画面外削除)
+    this.updateItems();
+
+    // 画面外に出た弾を削除
+    [...this.playerBullets.getChildren()].forEach(b => {
+      if (b.x > 1380 || b.y < -20 || b.y > 740) b.destroy();
+    });
+    [...this.enemyBullets.getChildren()].forEach(b => {
+      if (b.x < -20) b.destroy();
+    });
+  }
+
+  // ----------------------------------------------------------------
+  //  グレイズ判定
+  //  敵弾が自機の当たり判定の少し外側を通過したらカウント
+  // ----------------------------------------------------------------
+  updateGraze() {
+    const px = this.player.x, py = this.player.y;
+    [...this.enemyBullets.getChildren()].forEach(b => {
+      if (!b.active || b.grazed) return;
+      const d = Phaser.Math.Distance.Between(px, py, b.x, b.y);
+      if (d < GRAZE_RADIUS) {
+        b.grazed = true;          // 1発につき1回だけ
+        this.onGraze(b.x, b.y);
+      }
+    });
+  }
+
+  onGraze(x, y) {
+    this.grazeCount++;
+    this.addScore(50);           // グレイズ微加点
+
+    // パワーゲージ蓄積
+    this.grazeGauge++;
+    if (this.grazeGauge >= GRAZE_PER_GAUGE) {
+      this.grazeGauge = 0;
+      this.onGaugeFull();
+    }
+
+    // 小さなキラッ演出
+    const spark = this.add.circle(x, y, 4, 0x88eeff, 0.9).setDepth(7);
+    this.tweens.add({
+      targets: spark, alpha: 0, scale: 2.2,
+      duration: 250, onComplete: () => spark.destroy()
+    });
+
+    this.refreshHUD();
+  }
+
+  // パワーゲージ満タン: ショットレベルアップ (最大なら大量得点)
+  onGaugeFull() {
+    if (this.shotLevel < MAX_SHOT_LEVEL) {
+      this.shotLevel++;
+      this.showPopup(this.player.x, this.player.y - 36, 'POWER UP!', '#66ddff');
+    } else {
+      this.addScore(3000);
+      this.showPopup(this.player.x, this.player.y - 36, 'GRAZE BONUS +3000', '#66ddff');
+    }
+  }
+
+  // ----------------------------------------------------------------
+  //  アイテム更新
+  // ----------------------------------------------------------------
+  updateItems() {
+    const px = this.player.x, py = this.player.y;
+    [...this.items.getChildren()].forEach(item => {
+      if (!item.active) return;
+
+      // ふわふわ上下
+      item.y += Math.sin((this.time.now + item.bob) / 250) * 0.4;
+
+      // 自機が近いと吸い寄せ
+      const d = Phaser.Math.Distance.Between(px, py, item.x, item.y);
+      if (d < PICKUP_RADIUS * 2.2) {
+        const ang = Phaser.Math.Angle.Between(item.x, item.y, px, py);
+        const pull = 140;
+        item.body.setVelocity(
+          item.body.velocity.x * 0.85 + Math.cos(ang) * pull,
+          item.body.velocity.y * 0.85 + Math.sin(ang) * pull
+        );
+      }
+
+      // 回収
+      if (d < PICKUP_RADIUS) {
+        this.collectItem(item);
+        return;
+      }
+
+      // 画面外削除
+      if (item.x < -40) item.destroy();
+    });
+  }
+
+  // ----------------------------------------------------------------
+  //  自機更新
+  // ----------------------------------------------------------------
+  updatePlayer(dt) {
+    const SPEED = 250;
+    let vx = 0, vy = 0;
+
+    if (this.cursors.left.isDown  || this.keyA.isDown) vx -= 1;
+    if (this.cursors.right.isDown || this.keyD.isDown) vx += 1;
+    if (this.cursors.up.isDown    || this.keyW.isDown) vy -= 1;
+    if (this.cursors.down.isDown  || this.keyS.isDown) vy += 1;
+
+    // 斜め補正
+    if (vx !== 0 && vy !== 0) { vx *= 0.7071; vy *= 0.7071; }
+
+    this.player.setVelocity(vx * SPEED, vy * SPEED);
+
+    // ショット (押しっぱなし連射)
+    this.fireTimer -= dt;
+    if ((this.keyZ.isDown || this.keySpace.isDown) && this.fireTimer <= 0) {
+      this.playerFire();
+      this.fireTimer = 0.14; // ~7連射/秒
+    }
+  }
+
+  // ----------------------------------------------------------------
+  //  発射 (ショットレベルで弾数・太さ変化)
+  // ----------------------------------------------------------------
+  playerFire() {
+    const x = this.player.x + 28;
+    const y = this.player.y;
+
+    // レベルごとの弾配置 (yオフセット, vyオフセット)
+    let pattern;
+    if (this.shotLevel === 1) {
+      pattern = [{ oy: 0,  vy: 0 }];
+    } else if (this.shotLevel === 2) {
+      pattern = [{ oy: -7, vy: 0 }, { oy: 7, vy: 0 }];
+    } else {
+      pattern = [{ oy: 0, vy: 0 }, { oy: -9, vy: -120 }, { oy: 9, vy: 120 }];
+    }
+
+    pattern.forEach(p => {
+      const b = this.playerBullets.create(x, y + p.oy, 'playerBullet');
+      b.setVelocity(920, p.vy);
+      b.body.setAllowGravity(false);
+      b.setDepth(5);
+      // 高レベルほど太く強く
+      b.dmg = (this.shotLevel >= 3) ? 1.5 : 1;
+      if (this.shotLevel >= 2) b.setScale(1, 1.3);
+    });
+  }
+
+  enemyFire(enemy) {
+    const b = this.enemyBullets.create(
+      enemy.x - 22, enemy.y, 'enemyBullet'
+    );
+    b.setVelocityX(-380);
+    b.body.setAllowGravity(false);
+    b.setDepth(5);
+    b.grazed = false;
+  }
+
+  // ----------------------------------------------------------------
+  //  ボム
+  // ----------------------------------------------------------------
+  useBomb() {
+    if (this.bombs <= 0 || this.bombActive) return;
+
+    this.bombs--;
+    this.bombActive = true;
+    this.refreshHUD();
+
+    // 演出: リング拡大 + 画面フラッシュ
+    this.cameras.main.flash(250, 200, 150, 255, true);
+    const ring = this.add.image(this.player.x, this.player.y, 'bombRing')
+      .setScale(0.1).setAlpha(0.95).setDepth(15);
+    this.tweens.add({
+      targets: ring, scale: 7, alpha: 0,
+      duration: 700, ease: 'Cubic.Out',
+      onComplete: () => ring.destroy()
+    });
+
+    // 画面内の敵弾を消去 (消した弾は少し得点に)
+    [...this.enemyBullets.getChildren()].forEach(b => {
+      if (!b.active) return;
+      this.addScore(10);
+      const s = this.add.circle(b.x, b.y, 6, 0xcc99ff, 0.8).setDepth(7);
+      this.tweens.add({ targets: s, alpha: 0, scale: 2, duration: 300,
+        onComplete: () => s.destroy() });
+      b.destroy();
+    });
+
+    // 全ての敵に大ダメージ
+    [...this.enemies.getChildren()].forEach(enemy => {
+      if (!enemy.active) return;
+      this.dealDamage(enemy, 5);
+    });
+
+    // 発動中は一時無敵
+    this.invincible = true;
+    this.invincibleTimer = 2.0;
+
+    this.time.delayedCall(700, () => { this.bombActive = false; });
+  }
+
+  // ----------------------------------------------------------------
+  //  当たり判定コールバック
+  // ----------------------------------------------------------------
+  onBulletHitEnemy(bullet, enemy) {
+    if (!enemy.active) { bullet.destroy(); return; }
+    const dmg = bullet.dmg || 1;
+    bullet.destroy();
+    this.dealDamage(enemy, dmg);
+  }
+
+  // 敵にダメージを与える共通処理 (ショット・ボム両用)
+  dealDamage(enemy, dmg) {
+    if (!enemy.active) return;
+    enemy.hp -= dmg;
+
+    // 被弾フラッシュ
+    this.tweens.add({
+      targets: enemy,
+      alpha: 0.15,
+      duration: 60,
+      yoyo: true,
+      onComplete: () => { if (enemy.active) enemy.setAlpha(1); }
+    });
+
+    if (enemy.hp <= 0) {
+      this.showExplosion(enemy.x, enemy.y, 1.2);
+      this.maybeDropItem(enemy.x, enemy.y);
+      enemy.destroy();
+      this.addScore(100);
+    }
+  }
+
+  onEnemyBulletHitPlayer(enemyBullet, _player) {
+    enemyBullet.destroy();
+    this.damagePlayer();
+  }
+
+  // ----------------------------------------------------------------
+  //  スコア
+  // ----------------------------------------------------------------
+  addScore(n) {
+    this.score += n;
+    this.scoreText.setText(String(this.score).padStart(8, '0'));
+  }
+
+  // ----------------------------------------------------------------
+  //  アイテムドロップ
+  // ----------------------------------------------------------------
+  maybeDropItem(x, y) {
+    // 重み付き抽選テーブル (合計で 100 未満ぶんはドロップなし)
+    const roll = Phaser.Math.Between(1, 100);
+    let type = null;
+    if      (roll <= 14) type = 'power';     // 14%
+    else if (roll <= 44) type = 'star';      // 30%
+    else if (roll <= 72) type = 'crystal';   // 28%
+    else if (roll <= 82) type = 'bomb';      // 10%
+    else if (roll <= 90) type = 'heart';     // 8%
+    // 91-100 (10%) は何も落とさない
+
+    if (type) this.spawnItem(x, y, type);
+  }
+
+  spawnItem(x, y, type) {
+    const def = ITEM_DEFS[type];
+    const item = this.items.create(x, y, def.tex);
+    item.itemType = type;
+    item.setDepth(7);
+    item.body.setAllowGravity(false);
+    item.bob = Phaser.Math.Between(0, 1000);
+    // ふわっと舞い上がってから左へ流れる
+    item.setVelocity(Phaser.Math.Between(-30, 40), -60);
+    this.tweens.add({
+      targets: item, angle: 360, duration: 2500, repeat: -1
+    });
+    // しばらくしたら左スクロール速度に乗せる
+    this.time.delayedCall(450, () => {
+      if (item.active) item.body.setVelocity(-70, 0);
+    });
+  }
+
+  collectItem(item) {
+    const type = item.itemType;
+    const def = ITEM_DEFS[type];
+
+    switch (type) {
+      case 'power':
+        if (this.shotLevel < MAX_SHOT_LEVEL) {
+          this.shotLevel++;
+          this.showPopup(item.x, item.y, 'POWER UP!', def.color);
+        } else {
+          this.addScore(1000);
+          this.showPopup(item.x, item.y, 'MAX +1000', def.color);
+        }
+        break;
+      case 'bomb':
+        this.bombs++;
+        this.showPopup(item.x, item.y, def.label, def.color);
+        break;
+      case 'heart':
+        if (this.playerHP < this.playerMaxHP) {
+          this.playerHP++;
+          this.drawHPBar();
+          this.showPopup(item.x, item.y, def.label, def.color);
+        } else {
+          this.addScore(500);
+          this.showPopup(item.x, item.y, 'FULL +500', def.color);
+        }
+        break;
+      case 'star':
+      case 'crystal':
+        this.addScore(def.score);
+        this.showPopup(item.x, item.y, def.label, def.color);
+        break;
+    }
+
+    item.destroy();
+    this.refreshHUD();
+  }
+
+  // フローティングテキスト演出
+  showPopup(x, y, text, color) {
+    const t = this.add.text(x, y, text, {
+      fontSize: '18px', color, stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(20);
+    this.tweens.add({
+      targets: t, y: y - 40, alpha: 0,
+      duration: 800, ease: 'Cubic.Out',
+      onComplete: () => t.destroy()
+    });
+  }
+
+  // ----------------------------------------------------------------
+  //  ダメージ処理
+  // ----------------------------------------------------------------
+  damagePlayer() {
+    if (this.invincible || this.gameOver) return;
+
+    this.playerHP--;
+    this.drawHPBar();
+    this.cameras.main.flash(150, 255, 60, 60, true);
+    this.cameras.main.shake(200, 0.005);
+
+    if (this.playerHP <= 0) {
+      this.doGameOver();
+      return;
+    }
+
+    // 無敵時間 1.5秒
+    this.invincible      = true;
+    this.invincibleTimer = 1.5;
+  }
+
+  // ----------------------------------------------------------------
+  //  爆発エフェクト
+  // ----------------------------------------------------------------
+  showExplosion(x, y, scale = 1) {
+    const img = this.add.image(x, y, 'explosion').setScale(scale).setDepth(8);
+    this.tweens.add({
+      targets: img,
+      alpha: 0,
+      scale: scale * 2.8,
+      duration: 420,
+      ease: 'Power2',
+      onComplete: () => img.destroy()
+    });
+  }
+
+  // ----------------------------------------------------------------
+  //  ゲームオーバー
+  // ----------------------------------------------------------------
+  doGameOver() {
+    this.gameOver = true;
+    this.physics.pause();
+
+    this.showExplosion(this.player.x, this.player.y, 2);
+    this.player.setVisible(false);
+    this.grazeRing.setVisible(false);
+
+    this.time.delayedCall(900, () => {
+      this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.55).setDepth(18);
+
+      this.add.text(640, 280, 'GAME OVER', {
+        fontSize: '80px', color: '#ff2200',
+        stroke: '#000000', strokeThickness: 10
+      }).setOrigin(0.5).setDepth(20);
+
+      this.add.text(640, 380, `FINAL SCORE  ${String(this.score).padStart(8, '0')}`, {
+        fontSize: '32px', color: '#ffffff',
+        stroke: '#000000', strokeThickness: 4
+      }).setOrigin(0.5).setDepth(20);
+
+      this.add.text(640, 430, `GRAZE  ${this.grazeCount}`, {
+        fontSize: '20px', color: '#66ddff',
+        stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5).setDepth(20);
+
+      this.add.text(640, 490, 'SPACE キーでリトライ', {
+        fontSize: '24px', color: '#aaaaff',
+        stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5).setDepth(20);
+
+      this.input.keyboard.once('keydown-SPACE', () => {
+        this.scene.restart();
+      });
+    });
+  }
+}
+
+// ================================================================
+//  Phaser 設定
+// ================================================================
+const config = {
+  type: Phaser.AUTO,
+  width: 1280,
+  height: 720,
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false }
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  scene: [GameScene]
+};
+
+new Phaser.Game(config);
+</script>
+</body>
+</html>
