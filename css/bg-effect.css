@@ -1,0 +1,79 @@
+/* ============================================================
+   bg-effect — 月色：昼(白夜月) → 夜(満月) クロスフェード背景
+   全ページ共通。既存 style.css の後に読み込む。
+   画像は css/ から見て ../assets/images/ を参照。
+   ============================================================ */
+:root {
+  /* 昼→夜の切り替えにかける時間（後から調整しやすいよう変数化） */
+  --bg-transition-duration: 6s;
+  /* 暗め帯（オーバーレイ）。既存 indigo 系に馴染む色味 */
+  --bg-day-overlay:   rgba(20, 20, 40, 0.35);
+  --bg-night-overlay: rgba(5, 5, 20, 0.45);
+}
+
+/* 背景レイヤーを見せるため body を透過（既存 style.css は変更しない） */
+body {
+  background-color: transparent;
+}
+
+/* ===== 背景レイヤー（固定・スクロール追従／既存コンテンツより背面） ===== */
+.bg-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.bg-day,
+.bg-night {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: opacity var(--bg-transition-duration) ease-in-out;
+}
+
+.bg-day {
+  background-image: url('../assets/images/day.png');
+  opacity: 1;
+}
+
+.bg-night {
+  background-image: url('../assets/images/night.png');
+  opacity: 0;
+}
+
+body.is-night .bg-day  { opacity: 0; }
+body.is-night .bg-night { opacity: 1; }
+
+/* ===== 暗め帯（オーバーレイ） ===== */
+.bg-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--bg-day-overlay);
+  transition: background var(--bg-transition-duration) ease-in-out;
+}
+
+body.is-night .bg-overlay {
+  background: var(--bg-night-overlay);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-day,
+  .bg-night,
+  .bg-overlay {
+    transition: none;
+  }
+}
